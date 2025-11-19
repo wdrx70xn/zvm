@@ -1,0 +1,21 @@
+description: Linux DTB Copy
+
+compatible: "linux-dtb-cpy"
+
+properties:
+  vcpu_num:
+    type: int
+    description: |
+      Number of virtual CPUs for each Linux VM (supports SMP).
+    required: true
+  max_mem_size:
+    type: int
+    description: |
+      Max size of memory region
+    required: true
+  
+  reg:
+    type: array
+    required: true
+    description: |
+      Reg regions for the VM.

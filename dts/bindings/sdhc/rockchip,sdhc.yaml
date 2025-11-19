@@ -1,0 +1,29 @@
+description: Rockchip SDHC Controller node
+
+compatible: "rockchip,sdhc"
+
+include: [sdhc.yaml, reset-device.yaml]
+
+properties:
+  clock-frequency:
+    type: int
+    required: false
+    description: clock-frequency for SDHC
+  reg:
+    required: true
+    description: register space
+  power_delay_ms:
+    type: int
+    required: false
+    description: delay required to switch on the SDHC
+
+  dma_desc_base:
+    type: int
+    required: true
+    description: memregion save the descriptors
+
+  dma_desc_size:
+    type: int
+    required: true
+    description: memregion size
+

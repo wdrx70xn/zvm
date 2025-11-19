@@ -1,0 +1,75 @@
+description: Virtual Machine virtual pci devices.
+
+compatible: "virt,pci"
+
+include: base.yaml
+
+properties:
+  reg:
+    required: false
+
+  label:
+    type: string
+
+  type:
+    type: int
+    required: true
+    description: |
+      VM's pci device type, including ivshmem,
+      bridge and common device. See 'virt_pci.h'.
+
+  domain:
+    type: int
+    required: true
+    description: |
+      PCI device domain.
+
+  bdf:
+    type: int
+    required: true
+    description: |
+      PCI device address, including bus-device-function.
+
+  bar_mask0:
+    type: int
+    required: true
+    description: |
+      PCI device base address mask value.
+
+  bar_mask1:
+    type: int
+    required: true
+
+  bar_mask2:
+    type: int
+    required: true
+
+  bar_mask3:
+    type: int
+    required: true
+
+  bar_mask4:
+    type: int
+    required: true
+
+  bar_mask5:
+    type: int
+    required: true
+
+  shmem_region_start:
+    type: int
+    required: true
+    description: |
+      shared memory region start.
+
+  shmem_dev_id:
+    type: int
+
+  shmem_peers:
+    type: int
+
+  shmem_protocol:
+    type: int
+
+  status:
+    type: string

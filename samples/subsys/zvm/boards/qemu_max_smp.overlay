@@ -1,0 +1,197 @@
+/*
+ * Copyright 2024-2025 HNU-ESNL: Guoqi Xie, Chenglai Xiong, Xingyu Hu and etc.
+ * Copyright 2024-2025 openEuler SIG-Zephyr
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/{
+	aliases {
+        vmvgic = "/soc/vgic@fd400000";
+	};
+
+    chosen {
+		vm,console = &uart0;
+	};
+
+    soc {
+
+        ramdisk {
+            compatible = "zephyr,ram-disk";
+            disk-name = "RAM";
+            sector-size = <512>;
+            sector-count = <384>;
+	    };
+
+        pass_through_device {
+
+            #address-cells = <2>;
+            #size-cells = <2>;
+            ranges;
+            /* using pt device for vm */
+
+            uart1: uart@9001000 {
+                compatible = "pl011";
+                reg = <0x00 0x09001000 0x00 0x1000>;
+                interrupts = <GIC_SPI 10 IRQ_TYPE_EDGE 0>;
+                interrupt-names = "irq_0";
+                clocks = <&uartclk>;
+                status = "okay";
+                current-speed = <115200>;
+                label = "UART_1";
+            };
+        };
+
+        vgic: vgic@fd400000 {
+            compatible = "arm,gic";
+            reg = <0x0 0xfd400000 0x0 0x10000>,
+                <0x0 0xfd460000 0x0 0xc0000>;
+        };
+
+        zshm: zshm@e7f00000 {
+            compatible = "inter-vm,shm";
+            reg = <0x0 0xe7f00000 0x0 DT_SIZE_M(128)>;
+            interrupts = <GIC_SPI 0x30 IRQ_TYPE_EDGE IRQ_DEFAULT_PRIORITY>;
+            device_type = "ZSHM";
+        };
+
+    };
+
+    rtos_node: rtos_guest_space {
+        #address-cells = <1>;
+        #size-cells = <1>;
+        compatible = "rtos-vm";
+
+        rtos_ddr: memory@72500000 {
+            compatible = "vm-dram";
+            memmap_type = "direct";
+            address_type = "normal_memory";
+            vm_reg_base = <0x40000000>;
+            vm_reg_size = <DT_SIZE_M(128)>;
+            reg = <0x72500000 DT_SIZE_M(4)>;
+            label = "VM0_MEM";
+        };
+
+        zephyr_cpies {
+            #address-cells = <1>;
+            #size-cells = <1>;
+            zephyr_1_128: zephyr_cpy@65800000 {
+                compatible = "zephyr-cpy";
+                vcpu_num = <0x01>;
+                max_mem_size = <DT_SIZE_M(128)>;
+                reg = <0x65800000 DT_SIZE_M(2)>;
+            };
+            zephyr_2_128: zephyr_cpy@65a00000 {
+                compatible = "zephyr-cpy";
+                vcpu_num = <0x02>;
+                max_mem_size = <DT_SIZE_M(128)>;
+                reg = <0x65a00000 DT_SIZE_M(2)>;
+            };
+            zephyr_3_128: zephyr_cpy@65c00000 {
+                compatible = "zephyr-cpy";
+                vcpu_num = <0x03>;
+                max_mem_size = <DT_SIZE_M(128)>;
+                reg = <0x65c00000 DT_SIZE_M(2)>;
+            };
+            zephyr_4_128: zephyr_cpy@65e00000 {
+                compatible = "zephyr-cpy";
+                vcpu_num = <0x04>;
+                max_mem_size = <DT_SIZE_M(128)>;
+                reg = <0x65e00000 DT_SIZE_M(2)>;
+            };
+            /* the max addr is 0x67000000 */
+        };
+
+        freertos_cpies {
+
+            #address-cells = <1>;
+            #size-cells = <1>;
+            freertos_1_128: freertos_cpy@66000000 {
+                compatible = "freertos-cpy";
+                vcpu_num = <0x01>;
+                max_mem_size = <DT_SIZE_M(128)>;
+                reg = <0x66000000 DT_SIZE_M(2)>;
+            };
+        };
+    };
+
+    linux_node: linux_guest_space {
+        #address-cells = <1>;
+        #size-cells = <1>;
+        compatible = "linux-vm";
+
+        image_addr = <0x60000000>;
+        image_size = <DT_SIZE_M(64)>;
+
+        dtb_address = <0xf8000000>;
+        dtb_size = <DT_SIZE_M(1)>;
+
+        rootfs_paddress = <0x69000000>;
+        rootfs_addr = <0x67000000>;
+        rootfs_size = <DT_SIZE_M(180)>;
+
+        linux_ddr: memory@62500000 {
+            compatible = "vm-dram";
+            memmap_type = "direct";
+            address_type = "normal_memory";
+            vm_reg_base = <0x40000000>;
+            vm_reg_size = <DT_SIZE_M(1024)>;
+            reg = <0x62500000 DT_SIZE_M(64)>;
+            label = "VM1_MEM";
+        };
+
+        linux_dtb_cpies {
+            #address-cells = <1>;
+            #size-cells = <1>;
+            dtb_addr_1_512: dtb@64000000 {
+                compatible = "linux-dtb-cpy";
+                vcpu_num = <1>;
+                max_mem_size = <DT_SIZE_M(512)>;
+                reg = <0x64000000 DT_SIZE_M(1)>;
+            };
+            dtb_addr_2_512: dtb@64100000 {
+                compatible = "linux-dtb-cpy";
+                vcpu_num = <2>;
+                max_mem_size = <DT_SIZE_M(512)>;
+                reg = <0x64100000 DT_SIZE_M(1)>;
+            };
+            dtb_addr_3_512: dtb@64200000 {
+                compatible = "linux-dtb-cpy";
+                vcpu_num = <3>;
+                max_mem_size = <DT_SIZE_M(512)>;
+                reg = <0x64200000 DT_SIZE_M(1)>;
+            };
+            dtb_addr_4_512: dtb@64300000 {
+                compatible = "linux-dtb-cpy";
+                vcpu_num = <4>;
+                max_mem_size = <DT_SIZE_M(512)>;
+                reg = <0x64300000 DT_SIZE_M(1)>;
+            };
+            dtb_addr_1_1024: dtb@64400000 {
+                compatible = "linux-dtb-cpy";
+                vcpu_num = <1>;
+                max_mem_size = <DT_SIZE_M(1024)>;
+                reg = <0x64400000 DT_SIZE_M(1)>;
+            };
+            dtb_addr_2_1024: dtb@64500000 {
+                compatible = "linux-dtb-cpy";
+                vcpu_num = <2>;
+                max_mem_size = <DT_SIZE_M(1024)>;
+                reg = <0x64500000 DT_SIZE_M(1)>;
+            };
+            dtb_addr_3_1024: dtb@64600000 {
+                compatible = "linux-dtb-cpy";
+                vcpu_num = <3>;
+                max_mem_size = <DT_SIZE_M(1024)>;
+                reg = <0x64600000 DT_SIZE_M(1)>;
+            };
+            dtb_addr_4_1024: dtb@64700000 {
+                compatible = "linux-dtb-cpy";
+                vcpu_num = <4>;
+                max_mem_size = <DT_SIZE_M(1024)>;
+                reg = <0x64700000 DT_SIZE_M(1)>;
+            };
+            /* the max addr is 0x65800000*/
+        };
+    };
+};

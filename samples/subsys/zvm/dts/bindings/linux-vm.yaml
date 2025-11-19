@@ -1,0 +1,46 @@
+description: linux virtual machine space
+
+compatible: "linux-vm"
+
+properties:
+  image_addr:
+    type: int
+    description: |
+      Base address of the VM root filesystem.
+    required: true
+
+  image_size:
+    type: int
+    description: |
+      Base address of the VM root filesystem.
+    required: true
+
+  dtb_address:
+    type: int
+    description: |
+      Base address of the VM device tree file.
+    required: true
+
+  dtb_size:
+    type: int
+    description: |
+      Size of the VM device tree file.
+    required: true
+
+  rootfs_paddress:
+    type: int
+    description: |
+      Base address of the VM root filesystem.
+    required: true
+
+  rootfs_addr:
+    type: int
+    description: |
+      Base address of the VM root filesystem.
+    required: true
+
+  rootfs_size:
+    type: int
+    description: |
+      Base address of the VM root filesystem.
+    required: true

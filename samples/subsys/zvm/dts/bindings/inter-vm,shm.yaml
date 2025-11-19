@@ -1,0 +1,10 @@
+description: inter-vm shared memory
+
+compatible: "inter-vm,shm"
+
+include: base.yaml
+
+properties:
+  device_type:
+    type: string
+    required: true

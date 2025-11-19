@@ -1,0 +1,35 @@
+# Copyright (c) 2022, NXP
+# SPDX-License-Identifier: Apache-2.0
+
+
+description: |
+  The RK3568 clock controller generates the clock and also implements a
+  reset controller for SoC peripherals.
+  (examples: provide SCLK_UART1\PCLK_UART1 and SRST_P_UART1\SRST_S_UART1 for UART module)
+
+compatible: "rockchip,rk3568-cru"
+
+include: [clock-controller.yaml, base.yaml, pinctrl-device.yaml]
+
+properties:
+  reg:
+    required: true
+
+  rockchip,grf:
+    type: phandle
+
+  assigned-clocks:
+    type: compound
+
+  assigned-clock-rates:
+    type: array
+
+  assigned-clock-parents:
+    type: compound
+
+  "#clock-cells":
+    const: 1
+
+clock-cells:
+  - clk-id
+

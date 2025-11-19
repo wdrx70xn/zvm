@@ -1,0 +1,159 @@
+# Copyright 2024-2025 HNU-ESNL: Guoqi Xie, Chenglai Xiong, Xingyu Hu and etc.
+# Copyright 2024-2025 openEuler SIG-Zephyr
+# SPDX-License-Identifier: Apache-2.0
+
+source "subsys/zvm/vdev/Kconfig"
+
+menuconfig ZVM
+	bool "Zephyr Based Virtual Machine"
+	default n
+	select USERSPACE
+	help
+	  Enable Zephyr virtualization support.
+
+if ZVM
+
+config ZVM_INIT_PRIORITY
+	int "ZVM Initialization Priority"
+	default 80
+	help
+	  Set the initialization priority for the ZVM module.
+
+config MAX_VM_NUM
+	int "Maximum Number of Simultaneous VMs"
+	range 0 32
+	default 2
+	help
+	  Define the maximum number of VMs that can run simultaneously in the ZVM hypervisor.
+
+config DEFAULT_TOTAL_GUEST_MEMSIZE
+	int "Byte"
+	default 2684354560 if SOC_RK3588 # 2.5 G
+	default 1073741824 # 1G
+	help
+	  Specify the maximum number of vCPUs that each VM can possess.
+
+config MAX_VCPU_PER_VM
+	int "Maximum Number of vCPUs per VM"
+	range 1 4
+	default 4
+	help
+	  Specify the maximum number of vCPUs that each VM can possess.
+
+config MAX_VIRT_IRQ_NR
+	int "maximum vm irq number for each board"
+	default 256
+	help
+		Set the maximum vm irq number for each board. Because
+		device of each board is different.
+
+config ZVM_DEBUG
+    bool "Enable debug-level logging"
+    default n
+    depends on LOG
+    help
+        Enable debug-level logging for the application.
+
+config ZVM_DEBUG_LOG_INFO
+	bool "Enable System Boot Info Logging"
+	help
+	  Enable logging of system boot information for debugging purposes.
+
+config ZVM_SMP_DEBUG_INFO
+	bool "Enable SMP Debug Information"
+	default n
+	help
+	  Enable logging of SMP debug information, including CPU node IDs and vmpidr_el2 values.
+
+config VM_DTB_FILE_INPUT
+	bool "Parse DTB File for Linux VM"
+	help
+	  Enable parsing of the Device Tree Blob (DTB) file for Linux VMs.
+
+config VM_VIRTIO_MMIO
+	bool "virtio_mmio"
+	help
+		This option is selected by any subsystem which implements the virtio
+	  	mmio.
+
+config ZVM_VCPU_MULTI
+	bool "vcpu threads migrating information"
+	default n
+	help
+		This option is selected by any subsystem which implements the zvm
+
+config MAX_VCPU_PERCPU
+	int "vcpu number per pcpu."
+	default 2 if ZVM_VCPU_MULTI
+	default 1
+	help
+		The number of vcpu thread.
+
+config VCPU_THREAD_STACKSIZE
+	int "vCPU Thread Stack Size"
+	default 40960
+	help
+	  Set the stack size for each vCPU thread in the VM.
+
+config VCPU_MIGRATING_INFO
+	bool "vcpu threads migrating information"
+	default n
+	help
+		This option is selected by any subsystem which implements the zvm
+
+if VM_VIRTIO_MMIO
+
+config VIRTIO_INTERRUPT_DRIVEN
+	bool "VM virtio interrupt driver."
+	default y
+	help
+		Enable it if system need virtio mmio interrupt.
+
+config VIRTIO_MMIO_INIT_PRIORITY
+	int "VM virtio mmio init priority."
+	default 60
+	help
+		When virtio is init, it judge the initialization priority in POST_KERNLE.
+
+config VM_VIRTIO_MMIO_DEBUG
+	bool "Debug log for vm virtio"
+	default n
+	help
+		Enable it if system need virtio mmio debug info.
+
+endif # VM_VIRTIO_MMIO
+
+if ZVM_VCPU_MULTI
+
+config VCPU_MIGRATING_INFO
+	bool "vcpu threads migrating information"
+	default n
+	help
+		This option is selected by any subsystem which implements the zvm
+
+endif # ZVM_VCPU_MULTI
+
+config ZVM_OPERATION_TEST
+    bool "Enable VM operation tests in ZVM"
+	depends on HEARTBEAT
+	default n
+    help
+      Enable automated test cases for VM lifecycle operations,
+      including create, run, pause, shutdown, reboot, and delete. This is
+      primarily intended for validation and regression testing of ZVM's
+      core VM management logic.
+
+config ZVM_CLIENT
+    bool "Enable ZVM client"
+	depends on SOC_RK3588
+	default n
+    help
+      feature to connect to frontend (pyqt)
+
+config ZVM_MEMORY_RECORDER
+    bool "Enable ZVM memory recorder"
+	depends on ZVM_CLIENT
+    help
+      feature to ZVM_CLIENT
+
+endif # ZVM

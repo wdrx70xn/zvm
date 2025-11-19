@@ -1,0 +1,7 @@
+# Copyright (c) 2023, HNU-ESNL
+# SPDX-License-Identifier: Apache-2.0
+
+config CLOCK_CONTROL_RK3568
+	bool "RK3568 CLOCK CONTROLLER"
+	help
+	  Enable support for rk3568 clock controller driver.

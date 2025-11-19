@@ -1,0 +1,14 @@
+description: virtio mmio device
+
+compatible: "virtio,mmio"
+
+include: base.yaml
+
+properties:
+    device_type:
+      type: string
+      required: true
+
+    virtio_type:
+      type: int
+      required: true

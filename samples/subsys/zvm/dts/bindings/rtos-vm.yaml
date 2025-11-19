@@ -1,0 +1,22 @@
+description: RTOS Virtual Machine Space
+
+compatible: "rtos-vm"
+
+properties:
+  dtb_address:
+    type: int
+    description: |
+      Base address of the VM device tree file.
+    required: false
+
+  # dtb_size:
+  #   type: int
+  #   description: |
+  #     Size of the VM device tree file.
+  #   required: true
+
+  # vcpu_num:
+  #   type: int
+  #   description: |
+  #     Number of virtual CPUs for each Zephyr VM (supports SMP).
+  #   required: true

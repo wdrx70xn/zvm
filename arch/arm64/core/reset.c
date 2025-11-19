@@ -1,0 +1,289 @@
+/*
+ * Copyright (c) 2021 Carlo Caione <ccaione@baylibre.com>
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <kernel_internal.h>
+#include <zephyr/sys/barrier.h>
+#include "boot.h"
+#include <zephyr/zvm/arm/cpu.h>
+#include <zephyr/arch/arm64/cache.h>
+uint64_t cpu_vmpidr_el2_list[CONFIG_MP_NUM_CPUS] = {1};
+
+#define CPU_REG_ID(cpu_node_id) DT_REG_ADDR(cpu_node_id),
+static const uint64_t cpu_node_info_list[] = {
+	DT_FOREACH_CHILD(DT_PATH(cpus), CPU_REG_ID)
+};
+
+#ifdef CONFIG_ZVM_SMP_DEBUG_INFO
+void show_cpu_node_info_list(){
+	for (size_t i = 0; i < CONFIG_MP_NUM_CPUS; i++)
+	{
+		printk("cpu_node_info_list[%d]:%llx\n",i,cpu_node_info_list[i]);
+	}
+}
+void show_cpu_vmpidr_el2_list(){
+	for (size_t i = 0; i < CONFIG_MP_NUM_CPUS; i++)
+	{
+		printk("cpu_vmpidr_el2_list[%d]:%lx\n",i,cpu_vmpidr_el2_list[i]);
+	}
+}
+#endif
+
+void z_arm64_el2_init(void);
+
+void __weak z_arm64_el_highest_plat_init(void)
+{
+	/* do nothing */
+}
+
+void __weak z_arm64_el3_plat_init(void)
+{
+	/* do nothing */
+}
+
+void __weak z_arm64_el2_plat_init(void)
+{
+	/* do nothing */
+}
+
+void __weak z_arm64_el1_plat_init(void)
+{
+	/* do nothing */
+}
+
+void z_arm64_el_highest_init(void)
+{
+	if (is_el_highest_implemented()) {
+		write_cntfrq_el0(CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC);
+	}
+
+	z_arm64_el_highest_plat_init();
+
+	barrier_isync_fence_full();
+}
+
+
+#if !defined(CONFIG_ARMV8_R)
+enum el3_next_el {
+	EL3_TO_EL2,
+	EL3_TO_EL1_NO_EL2,
+	EL3_TO_EL1_SKIP_EL2
+};
+
+static inline enum el3_next_el el3_get_next_el(void)
+{
+	if (!is_el_implemented(2)) {
+		return EL3_TO_EL1_NO_EL2;
+	} else if (is_in_secure_state() && !is_el2_sec_supported()) {
+		/*
+		 * Is considered an illegal return "[..] a return to EL2 when EL3 is
+		 * implemented and the value of the SCR_EL3.NS bit is 0 if
+		 * ARMv8.4-SecEL2 is not implemented" (D1.11.2 from ARM DDI 0487E.a)
+		 */
+		return EL3_TO_EL1_SKIP_EL2;
+	} else {
+		return EL3_TO_EL2;
+	}
+}
+
+void z_arm64_el3_init(void)
+{
+	uint64_t reg;
+
+	/* Setup vector table */
+	write_vbar_el3((uint64_t)_vector_table);
+	barrier_isync_fence_full();
+
+	reg = 0U;			/* Mostly RES0 */
+	reg &= ~(CPTR_TTA_BIT |		/* Do not trap sysreg accesses */
+		 CPTR_TFP_BIT |		/* Do not trap SVE, SIMD and FP */
+		 CPTR_TCPAC_BIT);	/* Do not trap CPTR_EL2 / CPACR_EL1 accesses */
+	write_cptr_el3(reg);
+
+	reg = 0U;			/* Reset */
+#ifdef CONFIG_ARMV8_A_NS
+	reg |= SCR_NS_BIT;		/* EL2 / EL3 non-secure */
+#else
+	if (is_in_secure_state() && is_el2_sec_supported()) {
+		reg |= SCR_EEL2_BIT;    /* Enable EL2 secure */
+	}
+#endif
+	reg |= (SCR_RES1 |		/* RES1 */
+		SCR_RW_BIT |		/* EL2 execution state is AArch64 */
+		SCR_ST_BIT |		/* Do not trap EL1 accesses to timer */
+		SCR_HCE_BIT |		/* Do not trap HVC */
+		SCR_SMD_BIT);		/* Do not trap SMC */
+	write_scr_el3(reg);
+
+#if defined(CONFIG_GIC_V3)
+	reg = read_sysreg(ICC_SRE_EL3);
+	reg |= (ICC_SRE_ELx_DFB_BIT |	/* Disable FIQ bypass */
+		ICC_SRE_ELx_DIB_BIT |	/* Disable IRQ bypass */
+		ICC_SRE_ELx_SRE_BIT |	/* System register interface is used */
+		ICC_SRE_EL3_EN_BIT);	/* Enables lower Exception level access to ICC_SRE_EL1 */
+	write_sysreg(reg, ICC_SRE_EL3);
+#endif
+
+	z_arm64_el3_plat_init();
+
+	barrier_isync_fence_full();
+
+	if (el3_get_next_el() == EL3_TO_EL1_SKIP_EL2) {
+		/*
+		 * handle EL2 init in EL3, as it still needs to be done,
+		 * but we are going to be skipping EL2.
+		 */
+		z_arm64_el2_init();
+	}
+}
+#endif /* CONFIG_ARMV8_R */
+
+void z_arm64_el2_init(void)
+{
+	uint64_t reg;
+
+	reg = read_sctlr_el2();
+	reg |= (SCTLR_EL2_RES1 |	/* RES1 */
+		SCTLR_I_BIT |		/* Enable i-cache */
+		SCTLR_SA_BIT);		/* Enable SP alignment check */
+	write_sctlr_el2(reg);
+
+	reg = read_hcr_el2();
+	/* when EL2 is enable in current security status:
+	 * Clear TGE bit: All exceptions that would not be routed to EL2;
+	 * Clear AMO bit: Physical SError interrupts are not taken to EL2 and EL3.
+	 * Clear IMO bit: Physical IRQ interrupts are not taken to EL2 and EL3.
+	 */
+	reg &= ~(HCR_FMO_BIT | HCR_IMO_BIT | HCR_AMO_BIT | HCR_TGE_BIT);
+	reg |= HCR_RW_BIT;		/* EL1 Execution state is AArch64 */
+	write_hcr_el2(reg);
+
+	reg = 0U;			/* RES0 */
+	reg |= CPTR_EL2_RES1;		/* RES1 */
+	reg &= ~(CPTR_TFP_BIT |		/* Do not trap SVE, SIMD and FP */
+		 CPTR_TCPAC_BIT);	/* Do not trap CPACR_EL1 accesses */
+	write_cptr_el2(reg);
+
+	zero_cntvoff_el2();		/* Set 64-bit virtual timer offset to 0 */
+	zero_cnthctl_el2();
+#ifdef CONFIG_CPU_AARCH64_CORTEX_R
+	zero_cnthps_ctl_el2();
+#else
+	zero_cnthp_ctl_el2();
+#endif
+
+#ifdef CONFIG_ARM64_SET_VPIDR_EL2
+	reg = read_midr_el1();
+	write_vpidr_el2(reg);
+#endif
+
+#ifdef CONFIG_ARM64_SET_VMPIDR_EL2
+	reg = read_mpidr_el1();
+	write_vmpidr_el2(reg);
+#endif
+
+#if defined(CONFIG_ZVM) && defined(CONFIG_HAS_ARM_VHE)
+	reg = read_hcr_el2();
+	reg |= HCR_VHE_FLAGS;
+	write_hcr_el2(reg);
+
+	barrier_dsync_fence_full();
+	barrier_isync_fence_full();
+	barrier_dmem_fence_full();
+	reg = read_mpidr_el1();
+	/*Get mpidr info for VM.*/
+	arch_dcache_invd_range((void *)(cpu_vmpidr_el2_list), sizeof(cpu_vmpidr_el2_list));
+	for (size_t i = 0; i < CONFIG_MP_NUM_CPUS; i++)
+	{
+		if(cpu_node_info_list[i] == MPIDR_TO_CORE(GET_MPIDR()))
+		{
+			cpu_vmpidr_el2_list[i] = reg;
+		}
+	}
+	arch_dcache_flush_range((void *)(cpu_vmpidr_el2_list), sizeof(cpu_vmpidr_el2_list));
+	barrier_dsync_fence_full();
+	barrier_isync_fence_full();
+	barrier_dmem_fence_full();
+	/* Disable CP15 trapping to EL2 of EL1 accesses to System register  */
+	zero_sysreg(hstr_el2);
+	/* Disable Debug related register  */
+	zero_sysreg(mdcr_el2);
+	/* Init stage-2 translation table base register  */
+	zero_sysreg(vttbr_el2);
+#endif
+
+	/*
+	 * Enable this if/when we use the hypervisor timer.
+	 * write_cnthp_cval_el2(~(uint64_t)0);
+	 */
+	#define CNTHCTL_EL1PCEN 1 << 1
+	#define CNTHCTL_EL1PCTEN 1 << 0
+	uint64_t val;
+	val = read_cnthctl_el2();
+	val |= (CNTHCTL_EL1PCEN << 10);
+	val |= (CNTHCTL_EL1PCTEN << 10);
+	write_cnthctl_el2(val);
+
+	z_arm64_el2_plat_init();
+
+	barrier_isync_fence_full();
+}
+
+void z_arm64_el1_init(void)
+{
+	uint64_t reg;
+
+	/* Setup vector table */
+	write_vbar_el1((uint64_t)_vector_table);
+	barrier_isync_fence_full();
+
+	reg = 0U;			/* RES0 */
+	reg |= CPACR_EL1_FPEN_NOTRAP;	/* Do not trap NEON/SIMD/FP initially */
+					/* TODO: CONFIG_FLOAT_*_FORBIDDEN */
+	write_cpacr_el1(reg);
+
+	reg = read_sctlr_el1();
+	reg |= (SCTLR_EL1_RES1 |	/* RES1 */
+		SCTLR_I_BIT |		/* Enable i-cache */
+		SCTLR_C_BIT |		/* Enable d-cache */
+		SCTLR_SA_BIT);		/* Enable SP alignment check */
+	write_sctlr_el1(reg);
+
+	write_cntv_cval_el0(~(uint64_t)0);
+#if defined(CONFIG_ZVM) && defined(CONFIG_HAS_ARM_VHE)
+	write_cntp_cval_el0(~(uint64_t)0);	/* Can not access cntp_el0 in el1 */
+#endif
+	/*
+	 * Enable these if/when we use the corresponding timers.
+	 * write_cntp_cval_el0(~(uint64_t)0);
+	 * write_cntps_cval_el1(~(uint64_t)0);
+	 */
+
+	z_arm64_el1_plat_init();
+
+	barrier_isync_fence_full();
+}
+
+#if !defined(CONFIG_ARMV8_R)
+void z_arm64_el3_get_next_el(uint64_t switch_addr)
+{
+	uint64_t spsr;
+
+	write_elr_el3(switch_addr);
+
+	/* Mask the DAIF */
+	spsr = SPSR_DAIF_MASK;
+
+	if (el3_get_next_el() == EL3_TO_EL2) {
+		/* Dropping into EL2 */
+		spsr |= SPSR_MODE_EL2T;
+	} else {
+		/* Dropping into EL1 */
+		spsr |= SPSR_MODE_EL1T;
+	}
+
+	write_spsr_el3(spsr);
+}
+#endif /* CONFIG_ARMV8_R */

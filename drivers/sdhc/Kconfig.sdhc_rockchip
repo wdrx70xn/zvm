@@ -1,0 +1,32 @@
+# Copyright (c) 2023 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+config ROCKCHIP_SDHC
+	bool "ROCKCHIP SDHC"
+	default y
+	depends on DT_HAS_ROCKCHIP_SDHC_ENABLED
+	select SDHC_SUPPORTS_NATIVE_MODE
+	help
+		Enable Cadence SDMMC Host Controller.
+
+if ROCKCHIP_SDHC
+
+# Cadence SDHC DMA needs 64 bit aligned buffers
+config SDHC_BUFFER_ALIGNMENT
+	default 8
+
+config ROCKCHIP_DESC_COUNT
+	int "Allocate number of descriptors"
+	default 8
+	help
+		SD host controllers require DMA preparation for read and write operation.
+		Creates static descriptors which can be used by ADMA. Devices should
+		configure this flag if they require to transfer more than 8*64Kb of data.
+
+config ROCKCHIP_SDHC_DMA_ENABLED
+	bool "Enable SDHC DMA"
+	default y
+	help
+		ROC SD host controllers with DMA
+
+endif # ROCKCHIP_SDHC

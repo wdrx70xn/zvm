@@ -1,0 +1,153 @@
+/*
+ * Copyright 2020 NXP
+ * Copyright 2022 HNU-ESNL
+ * Copyright 2022 openEuler SIG-Zephyr
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <mem.h>
+#include <arm64/armv8-a.dtsi>
+#include <zephyr/dt-bindings/interrupt-controller/arm-gic.h>
+#include <zephyr/dt-bindings/clock/rk3568-cru.h>
+
+/ {
+	#address-cells = <1>;
+	#size-cells = <1>;
+
+	compatible = "rockchip,rk3568";
+	interrupt-parent = <&gic>;
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu@000 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a55";
+			enable-method = "psci";
+			reg = <0x000>;
+		};
+
+		cpu@100 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a55";
+			enable-method = "psci";
+			reg = <0x100>;
+		};
+
+		cpu@200 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a55";
+			enable-method = "psci";
+			reg = <0x200>;
+
+		};
+
+		cpu@300 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a55";
+			enable-method = "psci";
+			reg = <0x300>;
+		};
+	};
+
+	grf: syscon@fdc60000 {
+		compatible = "rockchip,rk3568-grf","syscon","simple-mfd";
+		reg = <0xfdc60000 0x10000>;
+		#clock-cells = <1>;
+		status = "okay";
+	};
+
+	pmugrf: syscon@fdc20000 {
+		compatible = "rockchip,rk3568-pmugrf","syscon", "simple-mfd";
+		reg = <0xfdc20000 0x10000>;
+		status = "okay";
+	};
+
+	pmucru: clock-controller@fdd00000 {
+		compatible = "rockchip,rk3568-pmucru";
+		reg = <0xfdd00000 0x1000>;
+		rockchip,grf = <&grf>;
+		#clock-cells = <1>;
+		status = "okay";
+	};
+
+	cru: clock-controller@fdd20000 {
+		compatible = "rockchip,rk3568-cru";
+		reg = <0xfdd20000 0x1000>;
+		rockchip,grf = <&grf>;
+		#clock-cells = <1>;
+
+		assigned-clocks =
+			<&pmucru CLK_RTC_32K>, <&pmucru PLL_PPLL>,
+			<&pmucru PCLK_PMU>, <&cru PLL_CPLL>,
+			<&cru PLL_GPLL>, <&cru ARMCLK>,
+			<&cru ACLK_BUS>, <&cru PCLK_BUS>,
+			<&cru ACLK_TOP_HIGH>, <&cru ACLK_TOP_LOW>,
+			<&cru HCLK_TOP>, <&cru PCLK_TOP>,
+			<&cru ACLK_PERIMID>, <&cru HCLK_PERIMID>,
+			<&cru PLL_NPLL>;
+		assigned-clock-rates =
+			<32768>, <200000000>,
+			<100000000>, <1000000000>,
+			<1188000000>, <600000000>,
+			<150000000>, <100000000>,
+			<300000000>, <200000000>,
+			<150000000>, <100000000>,
+			<300000000>, <150000000>,
+			<1200000000>;
+		assigned-clock-parents =
+			<&pmucru CLK_RTC32K_FRAC>;
+
+		status = "okay";
+	};
+
+	gic: interrupt-controller@fd400000 {
+		#address-cells = <1>;
+		compatible = "arm,gic-v3","arm,gic";
+		#interrupt-cells = <4>;
+		interrupt-controller;
+
+		reg = <0xfd400000 0x10000>, /* GICD */
+		      <0xfd460000 0xc0000>; /* GICR */
+		status = "okay";
+	};
+
+	psci {
+		compatible = "arm,psci-0.2", "arm,psci";
+		method = "smc";
+	};
+
+	timer {
+		compatible = "arm,armv8-timer";
+		interrupts = <GIC_PPI 13 IRQ_TYPE_LEVEL IRQ_DEFAULT_PRIORITY>,
+			     <GIC_PPI 14 IRQ_TYPE_LEVEL IRQ_DEFAULT_PRIORITY>,
+			     <GIC_PPI 11 IRQ_TYPE_LEVEL IRQ_DEFAULT_PRIORITY>,
+			     <GIC_PPI 10 IRQ_TYPE_LEVEL IRQ_DEFAULT_PRIORITY>;
+		interrupt-parent = <&gic>;
+	};
+
+	sdmmc0: dwmmc@fe2b0000 {
+		compatible = "rockchip,sdhc";
+		reg = <0xfe2b0000 0x4000>;
+		reg-names = "combo_phy";
+		interrupts = <GIC_SPI 98 IRQ_TYPE_LEVEL IRQ_DEFAULT_PRIORITY>;
+		clock-frequency = <150000000>;
+		power_delay_ms = <1000>;
+		clocks = <&cru HCLK_SDMMC0>, <&cru CLK_SDMMC0>,
+			 <&cru SCLK_SDMMC0_DRV>, <&cru SCLK_SDMMC0_SAMPLE>;
+		clock-names = "biu", "ciu", "ciu-drive", "ciu-sample";
+		status = "okay";
+	};
+
+	uart2: serial@fe660000 {
+		compatible = "rockchip,rk3568-uart", "ns16550";
+		reg = <0xfe660000 0x10000>;
+		interrupts = <GIC_SPI 118 IRQ_TYPE_EDGE IRQ_DEFAULT_PRIORITY>;
+		clock-frequency = <12000000>;
+		reg-shift = <2>;
+		status = "okay";
+	};
+
+};

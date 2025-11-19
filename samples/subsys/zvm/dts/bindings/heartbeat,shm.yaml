@@ -1,0 +1,10 @@
+description: shared memory for heartbeat
+
+compatible: "heartbeat,shm"
+
+include: base.yaml
+
+properties:
+  device_type:
+    type: string
+    required: true

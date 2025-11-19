@@ -1,0 +1,168 @@
+/*
+ * Copyright 2021-2022 HNU-ESNL
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/{
+	aliases {
+        vmvgic = "/soc/vgic@fd400000";
+		//ptdevice1 = "/soc/ptdev@0/serial@fe660000";
+		//ptdevice2 = "/soc/ptdev@0/serial@fe670000";
+        ptdevice3 = "/soc/ptdev@0/linuxdev@103000";
+        // linuxdebugger = "/soc/fiq-debugger";
+        zephyrcpy = "/soc/zephyr_cpy@1000000";
+        linuxcpy = "/soc/linux_cpy@4000000";
+        linuxdtb = "/soc/linux_dtb@c000000";
+        linuxrfs = "/soc/linux_rootfs@e0000000";
+        zshm    = "/soc/zshm@b0000000";
+	};
+
+	chosen {
+		vm,console = &uart2;
+        vm,blk = "/soc/ptdev@0/virtio_mmio@a000000";
+	};
+
+
+    soc {
+
+        pass_through_device: ptdev@0 {
+
+            #address-cells = <2>;
+            #size-cells = <2>;
+            ranges = <0x0 0x0 0x0 0x1 0x0>;
+/*
+            uart3: serial@fe670000 {
+                compatible = "rockchip-ns16550";
+                reg = <0x0 0xfe670000 0x0 0x10000>;
+                interrupts = <GIC_SPI 119 IRQ_TYPE_EDGE IRQ_DEFAULT_PRIORITY>;
+                clock-frequency = <12000000>;
+                reg-shift = <2>;
+                status = "okay";
+                current-speed = <1500000>;
+                label = "UART3";
+            };
+
+            uart2: serial@fe660000 {
+                compatible = "rockchip-ns16550";
+                reg = <0x0 0xfe660000 0x0 0x10000>;
+                interrupts = <GIC_SPI 118 IRQ_TYPE_EDGE IRQ_DEFAULT_PRIORITY>;
+                clock-frequency = <12000000>;
+                reg-shift = <2>;
+                status = "okay";
+                current-speed = <1500000>;
+                label = "UART2";
+            };
+*/
+            virtio_mmio@a000000 {
+                interrupts = <GIC_SPI 0x10 IRQ_TYPE_EDGE 0>;
+                reg = <0x0 0xa000000 0x0 0x1000>;
+                compatible = "virtio,mmio";
+                device_type = "virtio";
+                virtio_type = <2>;
+                label = "VIRTIOBLK";
+                status = "okay";
+            };
+
+            virtio_mmio@a001000 {
+                interrupts = <GIC_SPI 0x11 IRQ_TYPE_EDGE 0>;
+                reg = <0x0 0xa001000 0x0 0x1000>;
+                compatible = "virtio,mmio";
+                device_type = "virtio";
+                virtio_type = <2>;
+                label = "VIRTIOBLK";
+                status = "okay";
+            };
+
+            linuxdev: linuxdev@103000 {
+                compatible = "rockchip,rk3399-i2c";
+                reg = <0x0 0x103000 0x0 0x1000>;
+                interrupts = <GIC_SPI 150 IRQ_TYPE_EDGE IRQ_DEFAULT_PRIORITY>;
+                status = "okay";
+                label = "LINUXDEV";
+            };
+
+        };
+
+        zshm@b0000000 {
+            compatible = "inter-vm,shm";
+            reg = <0x0 0xb0000000 0x0 DT_SIZE_M(128)>;
+            interrupts = <GIC_SPI 0x30 IRQ_TYPE_EDGE IRQ_DEFAULT_PRIORITY>;
+            device_type = "ZSHM";
+        };
+
+        vgic: vgic@fd400000 {
+            compatible = "gic";
+            reg = <0xfd400000 0x10000>,
+                  <0xfd460000 0xc0000>;
+        };
+/*
+        // debug_uart: fiq-debugger {
+        //     compatible = "rockchip,fiq-debugger";
+        //     rockchip,serial-id = <0x02>;
+        //     rockchip,wake-irq = <0x00>;
+        //     rockchip,irq-mode-enable = <0x01>;
+        //     rockchip,baudrate = <1500000>;
+        //     interrupts = <GIC_SPI 220 IRQ_TYPE_EDGE IRQ_DEFAULT_PRIORITY>;
+        //     status = "okay";
+        // };
+*/
+        zephyr_cpy@1000000 {
+            reg = <0x01000000 DT_SIZE_M(2)>;
+        };
+
+        linux_cpy@4000000 {
+            reg = <0x04000000 DT_SIZE_M(64)>;
+        };
+
+        linux_dtb@c000000 {
+            reg = <0x0c000000 DT_SIZE_M(2)>;
+        };
+
+        linux_rootfs@e0000000 {
+            reg = <0xe0000000 DT_SIZE_M(180)>;
+        };
+    };
+
+    /*TODO: The device that used by vm will be added below. */
+    vm_zephyr_space {
+        #address-cells = <2>;
+        #size-cells = <2>;
+        compatible = "zephyr-vm";
+        dtb_address = <0x200000>;
+        dtb_size = <DT_SIZE_M(2)>;
+        vcpu_num = <0x01>;
+
+        zephyr_ddr: memory@30000000 {
+            compatible = "vm-dram";
+            memmap_type = "dirct";
+            address_type = "normal_memory";
+            vm_reg_base = <0x40000000>;
+            vm_reg_size = <DT_SIZE_M(128)>;
+            reg = <0x0 0x30000000 0x0 DT_SIZE_M(4)>;
+            label = "VM0_MEM";
+        };
+
+    };
+
+    vm_linux_space {
+        #address-cells = <2>;
+        #size-cells = <2>;
+        compatible = "linux-vm";
+        dtb_address = <0x99000000>;
+        dtb_size = <DT_SIZE_M(2)>;
+        vcpu_num = <0x01>;
+        rootfs_address = <0x69000000>;
+
+        linux_ddr: memory@60000000 {
+            compatible = "vm-dram";
+            memmap_type = "dirct";
+            address_type = "normal_memory";
+            vm_reg_base = <0x40000000>;
+            vm_reg_size = <DT_SIZE_M(1024)>;
+            reg = <0x0 0x60000000 0x0 DT_SIZE_M(64)>;
+            label = "VM1_MEM";
+        };
+    };
+
+};

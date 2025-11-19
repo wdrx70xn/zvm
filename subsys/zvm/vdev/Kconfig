@@ -1,0 +1,149 @@
+# Copyright 2024-2025 HNU-ESNL: Guoqi Xie, Chenglai Xiong, Xingyu Hu and etc.
+# Copyright 2024-2025 openEuler SIG-Zephyr
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig ZVM_DEVICE_SUPPORT
+	bool "Zephyr Based Virtualization Device Menu"
+	default y
+	help
+		Enable support for Zephyr-based virtualization devices.
+
+config VIRT_DEVICE_INTERRUPT_DRIVEN
+	bool "ZVM Virtualization Device Interrupt Support"
+	default y
+	help
+		Enable interrupt support for ZVM virtualization devices.
+		This option must be selected to set the callback function
+		when VM devices require interrupts.
+
+config VM_VGICV3
+	bool "VGICv3 Device Support"
+	help
+		Enable support for the VGICv3 device, which is used
+		when setting up a VM.
+
+if VM_VGICV3
+
+config VM_VGICV3_INIT_PRIORITY
+	int "VGICv3 Initialization Priority"
+	default 52
+	help
+		Set the initialization priority for the VGICv3 device.
+		This is evaluated at the POST_KERNEL level.
+
+endif
+
+config VM_VSERIAL
+	bool "VM VSERIAL that get from vm."
+	help
+		This option is used for building memory that get from overlay.
+
+if VM_VSERIAL
+
+config VM_VSERIAL_INIT_PRIORITY
+	int "VM virt serial init priority."
+	default 52
+	help
+		When serial is init, it judge the initialization priority in POST_KERNLE.
+
+config VIRT_SERIAL_CTRL_INIT_PRIORITY
+	int "VM virt serial ctrl block init priority."
+	default 51
+	help
+		When serial is init, it judge the initialization priority in POST_KERNLE.
+
+endif
+
+config VM_SYSCON_CONTROLLER
+	bool "VM syscon controller."
+	help
+		For hardware board, the system register may be configuration to multiple modes.
+		VM which needs these system configurations may access syscon, ZVM must manager
+		these configuration and determining which io function can be edit.
+
+if VM_SYSCON_CONTROLLER
+
+config VM_SYSCON_CONTROLLER_INIT_PRIORITY
+	int "VM syscon controller init priority."
+	default 60
+	help
+		When virt syscon is init, it judge the initialization priority in POST_KERNLE.
+
+endif
+
+config VM_CLOCK_SYSTEM_CONTROLLER
+	bool "VM clock system controller."
+	help
+		Some VMs may need to access clock syscon device, which is not suitable
+		to passthrough. ZVM must manager these clock devices and determining which
+		devices can be accessed.
+
+if VM_CLOCK_SYSTEM_CONTROLLER
+
+config VM_CLOCK_SYSTEM_CONTROLLER_INIT_PRIORITY
+	int "VM system clock controller init priority."
+	default 58
+	help
+		When virt system clock is init, it judge the initialization priority in POST_KERNLE.
+
+endif
+
+config VM_FIQ_DEBUGGER
+	bool "Linux VM debugger console on rk3568/rk3588."
+	help
+		When booting linux VM on rk3568/rk3588, a debugger console must be inited,
+		this option is used to map irq to linux vm.
+
+if VM_FIQ_DEBUGGER
+
+config VM_FIQ_DEBUGGER_INIT_PRIORITY
+	int "VM fiq debugger init priority."
+	default 62
+	help
+		When fiq debugger is init, it judge the initialization priority in POST_KERNLE.
+
+endif
+
+if VM_VIRTIO_MMIO
+
+config VM_VIRTIO_BLOCK
+	bool "VM virtio_mmio block for vm."
+	help
+		This option is selected by any subsystem which implements the virtio_block
+		using virtio_mmio.
+
+config VM_VIRTIO_NET
+	bool "VM virtio_mmio net for vm."
+	help
+		This option is selected by any subsystem which implements the virtio_net
+		using virtio_mmio.
+endif
+
+config ZSHM
+	bool "zvm inter-vm shared memory."
+	help
+		This option is used for building zvm inter-vm shared memory that get from overlay.
+
+config HEARTBEAT
+	bool "zvm shared memory device for heartbeat."
+	help
+		This option is used for building zvm shared memory device for heartbeat.
+
+if ZSHM
+
+config ZSHM_INIT_PRIORITY
+	int "zvm inter-vm shared memory init priority."
+	default 59
+	help
+		When zvm inter-vm shared memory is init, it judge the initialization priority in POST_KERNLE.
+endif
+
+
+if SOC_FAMILY_ROCKCHIP
+
+config VIRT_RK_LINUXDEV_INIT_PRIORITY
+	int "zvm shared memory device for heartbeat init priority."
+	default 58
+	help
+		When zvm heartbeat dev is init, it judge the initialization priority in POST_KERNLE.
+endif

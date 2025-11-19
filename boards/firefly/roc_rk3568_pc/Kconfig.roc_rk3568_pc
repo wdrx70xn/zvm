@@ -1,0 +1,15 @@
+# Copyright 2022 HNU-ESNL
+# Copyright 2022 openEuler SIG-Zephyr
+# SPDX-License-Identifier: Apache-2.0
+
+config BOARD_ROC_RK3568_PC
+	select SOC_RK3568
+
+#ifdef BOARD_ROC_RK3568_PC
+
+config RK3568_CLOCK_CONTROL_INIT_PRIORITY
+	int "Clock control init priority"
+	help
+	  Clock control driver device initialization priority for rk3568.
+
+#endif
